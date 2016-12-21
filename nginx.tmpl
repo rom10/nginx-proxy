@@ -135,12 +135,15 @@ upstream {{ $host }} {
 
 {{ $is_https := (and (ne $cert "") (exists (printf "/etc/nginx/certs/%s.crt" $cert)) (exists (printf "/etc/nginx/certs/%s.key" $cert))) }}
 
+{{/* Get the publish port [DOAS] */}}
+{{ $port := or (first (groupByKeys $containers "Env.APP_PORT")) "80" }}
+
 {{ if $is_https }}
 
 {{ if eq $https_method "redirect" }}
 server {
-	server_name {{ $host }};
-	listen 80 {{ $default_server }};
+	server_name ~.*;
+	listen {{ $port }} {{ $default_server }};
 	access_log /var/log/nginx/access.log vhost;
 	return 301 https://$host$request_uri;
 }
@@ -200,8 +203,8 @@ server {
 {{ if or (not $is_https) (eq $https_method "noredirect") }}
 
 server {
-	server_name {{ $host }};
-	listen 80 {{ $default_server }};
+	server_name ~.*;
+	listen {{ $port }} {{ $default_server }};
 	access_log /var/log/nginx/access.log vhost;
 
 	{{ if (exists (printf "/etc/nginx/vhost.d/%s" $host)) }}
